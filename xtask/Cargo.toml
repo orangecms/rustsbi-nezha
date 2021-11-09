@@ -2,7 +2,7 @@
 name = "xtask"
 version = "0.1.0"
 edition = "2018"
-authers = ["ez4yunfeng2<ez4yunfeng2@stu.hunau.edu.cn>"]
+authors = ["ez4yunfeng2<ez4yunfeng2@stu.hunau.edu.cn>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -1,17 +1,19 @@
 #![no_std]
 #![no_main]
 #![feature(asm)]
+#![feature(asm_sym)]
+#![feature(asm_const)]
 #![feature(generator_trait)]
 #![feature(naked_functions)]
 #![feature(default_alloc_error_handler)]
-mod hal;
-mod feature;
-mod runtime;
-mod peripheral;
 mod execute;
+mod feature;
+mod hal;
 mod hart_csr_utils;
-use core::{panic::PanicInfo};
+mod peripheral;
+mod runtime;
 use buddy_system_allocator::LockedHeap;
+use core::panic::PanicInfo;
 use rustsbi::println;
 
 use crate::{hal::write_reg, hart_csr_utils::print_hart_pmp};
@@ -37,20 +39,23 @@ extern "C" fn rust_main() -> ! {
     runtime::init();
     if hartid == 0 {
         init_heap();
-        init_plic(); 
+        init_plic();
         peripheral::init_peripheral();
         println!("[rustsbi] RustSBI version {}", rustsbi::VERSION);
         println!("{}", rustsbi::LOGO);
-        println!("[rustsbi] Platform Name: {}","T-HEAD Xuantie Platform");
-        println!("[rustsbi] Implementation: RustSBI-NeZha Version {}", env!("CARGO_PKG_VERSION"));   
+        println!("[rustsbi] Platform Name: {}", "T-HEAD Xuantie Platform");
+        println!(
+            "[rustsbi] Implementation: RustSBI-NeZha Version {}",
+            env!("CARGO_PKG_VERSION")
+        );
     }
     delegate_interrupt_exception();
     if hartid == 0 {
         hart_csr_utils::print_hart_csrs();
-        println!("[rustsbi] enter supervisor 0x40020000");
+        println!("[rustsbi] enter supervisor 0x40200000");
         print_hart_pmp();
     }
-    execute::execute_supervisor(0x4002_0000, hartid,DEVICE_TREE_BINARY.as_ptr() as usize)
+    execute::execute_supervisor(0x4020_0000, hartid, DEVICE_TREE_BINARY.as_ptr() as usize)
 }
 
 fn init_bss() {
@@ -67,7 +72,7 @@ fn init_bss() {
     }
 }
 
-fn init_pmp(){
+fn init_pmp() {
     use riscv::register::*;
     let cfg = 0b000011110000111100001111usize;
     pmpcfg0::write(0);
@@ -79,8 +84,8 @@ fn init_pmp(){
     pmpaddr3::write(0xc0000000usize >> 2);
 }
 
-fn init_plic(){
-    unsafe{
+fn init_plic() {
+    unsafe {
         let mut addr: usize;
         asm!("csrr {}, 0xfc1", out(reg) addr);
         write_reg(addr, 0x001ffffc, 0x1)
@@ -88,7 +93,7 @@ fn init_plic(){
 }
 
 fn delegate_interrupt_exception() {
-    use riscv::register::{mideleg, medeleg, mie};
+    use riscv::register::{medeleg, mideleg, mie};
     unsafe {
         mideleg::set_sext();
         mideleg::set_stimer();
@@ -102,9 +107,9 @@ fn delegate_interrupt_exception() {
 
 fn init_heap() {
     unsafe {
-        SBI_HEAP.lock().init(
-            HEAP_SPACE.as_ptr() as usize, SBI_HEAP_SIZE
-        )
+        SBI_HEAP
+            .lock()
+            .init(HEAP_SPACE.as_ptr() as usize, SBI_HEAP_SIZE)
     }
 }
 
@@ -118,13 +123,13 @@ fn panic(info: &PanicInfo) -> ! {
     use rustsbi::Reset;
     peripheral::Reset.system_reset(
         rustsbi::reset::RESET_TYPE_SHUTDOWN,
-        rustsbi::reset::RESET_REASON_SYSTEM_FAILURE
+        rustsbi::reset::RESET_REASON_SYSTEM_FAILURE,
     );
-    loop { }
+    loop {}
 }
 
 #[naked]
-#[link_section = ".text.entry"] 
+#[link_section = ".text.entry"]
 #[export_name = "_start"]
 unsafe extern "C" fn entry() -> ! {
     asm!(
@@ -140,9 +145,9 @@ unsafe extern "C" fn entry() -> ! {
     bnez    t1, 1b
     ",
     // 2. jump to rust_main (absolute address)
-    "j      {rust_main}", 
+    "j      {rust_main}",
     per_hart_stack_size = const PER_HART_STACK_SIZE,
-    stack = sym SBI_STACK, 
+    stack = sym SBI_STACK,
     rust_main = sym rust_main,
     options(noreturn))
 }

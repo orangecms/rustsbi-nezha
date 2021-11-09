@@ -2,13 +2,7 @@
 name = "rustsbi-nezha"
 version = "0.1.0"
 edition = "2018"
-authers = ["ez4yunfeng2<ez4yunfeng2@stu.hunau.edu.cn>"]
-
-[profile.dev]
-panic = "abort"
-     
-[profile.release]
-panic = "abort"
+authors = ["ez4yunfeng2<ez4yunfeng2@stu.hunau.edu.cn>"]
 
 [dependencies]
 nb = "1"
