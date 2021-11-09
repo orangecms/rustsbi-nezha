@@ -23,8 +23,9 @@ const PER_HART_STACK_SIZE: usize = 8 * 1024; // 8KiB
 const SBI_STACK_SIZE: usize = 2 * PER_HART_STACK_SIZE;
 #[link_section = ".bss.uninit"]
 static mut SBI_STACK: [u8; SBI_STACK_SIZE] = [0; SBI_STACK_SIZE];
-
+const PAYLOAD_OFFSET: usize = 0x4020_0000;
 const SBI_HEAP_SIZE: usize = 8 * 1024; // 8KiB
+static PLATFORM: &str = "T-HEAD Xuantie Platform";
 #[link_section = ".bss.uninit"]
 static mut HEAP_SPACE: [u8; SBI_HEAP_SIZE] = [0; SBI_HEAP_SIZE];
 #[global_allocator]
@@ -41,21 +42,21 @@ extern "C" fn rust_main() -> ! {
         init_heap();
         init_plic();
         peripheral::init_peripheral();
-        println!("[rustsbi] RustSBI version {}", rustsbi::VERSION);
+        println!("[rustsbi] RustSBI version {}\r", rustsbi::VERSION);
         println!("{}", rustsbi::LOGO);
-        println!("[rustsbi] Platform Name: {}", "T-HEAD Xuantie Platform");
+        println!("[rustsbi] Platform Name: {}\r", PLATFORM);
         println!(
-            "[rustsbi] Implementation: RustSBI-NeZha Version {}",
+            "[rustsbi] Implementation: RustSBI-NeZha Version {}\r",
             env!("CARGO_PKG_VERSION")
         );
     }
     delegate_interrupt_exception();
     if hartid == 0 {
         hart_csr_utils::print_hart_csrs();
-        println!("[rustsbi] enter supervisor 0x40200000");
+        println!("[rustsbi] enter supervisor 0x{:x}\r", PAYLOAD_OFFSET);
         print_hart_pmp();
     }
-    execute::execute_supervisor(0x4020_0000, hartid, DEVICE_TREE_BINARY.as_ptr() as usize)
+    execute::execute_supervisor(payload_offset, hartid, DEVICE_TREE_BINARY.as_ptr() as usize)
 }
 
 fn init_bss() {
