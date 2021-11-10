@@ -56,7 +56,7 @@ extern "C" fn rust_main() -> ! {
         println!("[rustsbi] enter supervisor 0x{:x}\r", PAYLOAD_OFFSET);
         print_hart_pmp();
     }
-    execute::execute_supervisor(payload_offset, hartid, DEVICE_TREE_BINARY.as_ptr() as usize)
+    execute::execute_supervisor(PAYLOAD_OFFSET, hartid, DEVICE_TREE_BINARY.as_ptr() as usize)
 }
 
 fn init_bss() {
