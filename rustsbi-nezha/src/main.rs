@@ -51,12 +51,14 @@ extern "C" fn rust_main() -> ! {
         );
     }
     delegate_interrupt_exception();
+    let dtb_ptr = DEVICE_TREE_BINARY.as_ptr() as usize;
     if hartid == 0 {
         hart_csr_utils::print_hart_csrs();
         println!("[rustsbi] enter supervisor 0x{:x}\r", PAYLOAD_OFFSET);
+        println!("[rustsbi] dtb handed over from 0x{:x}\r", dtb_ptr);
         print_hart_pmp();
     }
-    execute::execute_supervisor(PAYLOAD_OFFSET, hartid, DEVICE_TREE_BINARY.as_ptr() as usize)
+    execute::execute_supervisor(PAYLOAD_OFFSET, hartid, dtb_ptr)
 }
 
 fn init_bss() {
