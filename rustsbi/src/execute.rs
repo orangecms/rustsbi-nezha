@@ -1,10 +1,10 @@
-use core::{
-    pin::Pin,
-    ops::{Generator, GeneratorState},
-};
-use riscv::register::scause::{Trap, Exception};
-use crate::{runtime::{MachineTrap, Runtime, SupervisorContext}};
 use crate::feature;
+use crate::runtime::{MachineTrap, Runtime, SupervisorContext};
+use core::{
+    ops::{Generator, GeneratorState},
+    pin::Pin,
+};
+use riscv::register::scause::{Exception, Trap};
 
 pub fn execute_supervisor(supervisor_mepc: usize, a0: usize, a1: usize) -> ! {
     let mut rt = Runtime::new_sbi_supervisor(supervisor_mepc, a0, a1);
@@ -21,66 +21,63 @@ pub fn execute_supervisor(supervisor_mepc: usize, a0: usize, a1: usize) -> ! {
                 ctx.a0 = ans.error;
                 ctx.a1 = ans.value;
                 ctx.mepc = ctx.mepc.wrapping_add(4);
-            },
+            }
             GeneratorState::Yielded(MachineTrap::IllegalInstruction()) => {
                 let ctx = rt.context_mut();
                 let ins = unsafe { get_vaddr_u32(ctx.mepc) } as usize;
                 if !emulate_illegal_instruction(ctx, ins) {
                     unsafe {
                         if feature::should_transfer_trap(ctx) {
-                            feature::do_transfer_trap(ctx, Trap::Exception(Exception::IllegalInstruction))
+                            feature::do_transfer_trap(
+                                ctx,
+                                Trap::Exception(Exception::IllegalInstruction),
+                            )
                         } else {
                             fail_illegal_instruction(ctx, ins)
                         }
                     }
                 }
-            },
+            }
             GeneratorState::Yielded(MachineTrap::ExternalInterrupt()) => unsafe {
                 let ctx = rt.context_mut();
                 feature::call_supervisor_interrupt(ctx)
             },
             GeneratorState::Yielded(MachineTrap::MachineTimer()) => {
                 feature::forward_supervisor_timer()
-            },
+            }
             GeneratorState::Yielded(MachineTrap::MachineSoft()) => {
                 feature::forward_supervisor_soft()
-            },
+            }
             GeneratorState::Yielded(MachineTrap::InstructionFault(_addr)) => {
                 let ctx = rt.context_mut();
                 unsafe {
                     feature::do_transfer_trap(ctx, Trap::Exception(Exception::InstructionFault))
                 }
-            },
+            }
             GeneratorState::Yielded(MachineTrap::InstructionPageFault(_addr)) => {
                 let ctx = rt.context_mut();
                 unsafe {
                     feature::do_transfer_trap(ctx, Trap::Exception(Exception::InstructionPageFault))
                 }
-            },
+            }
             GeneratorState::Yielded(MachineTrap::LoadFault(_addr)) => {
                 let ctx = rt.context_mut();
-                unsafe {
-                        feature::do_transfer_trap(ctx, Trap::Exception(Exception::LoadFault))
-                }
-            },
+                unsafe { feature::do_transfer_trap(ctx, Trap::Exception(Exception::LoadFault)) }
+            }
             GeneratorState::Yielded(MachineTrap::LoadPageFault(_addr)) => {
                 let ctx = rt.context_mut();
-                unsafe {
-                    feature::do_transfer_trap(ctx, Trap::Exception(Exception::LoadPageFault))
-                }
-            },
+                unsafe { feature::do_transfer_trap(ctx, Trap::Exception(Exception::LoadPageFault)) }
+            }
             GeneratorState::Yielded(MachineTrap::StorePageFault(_addr)) => {
                 let ctx = rt.context_mut();
                 unsafe {
                     feature::do_transfer_trap(ctx, Trap::Exception(Exception::StorePageFault))
                 }
-            },
+            }
             GeneratorState::Yielded(MachineTrap::StoreFault(_addr)) => {
                 let ctx = rt.context_mut();
-                unsafe {
-                    feature::do_transfer_trap(ctx, Trap::Exception(Exception::StoreFault))
-                }
-            },
+                unsafe { feature::do_transfer_trap(ctx, Trap::Exception(Exception::StoreFault)) }
+            }
             GeneratorState::Complete(()) => unreachable!(),
         }
     }
@@ -88,8 +85,7 @@ pub fn execute_supervisor(supervisor_mepc: usize, a0: usize, a1: usize) -> ! {
 
 #[inline]
 unsafe fn get_vaddr_u32(vaddr: usize) -> u32 {
-    get_vaddr_u16(vaddr) as u32 | 
-    ((get_vaddr_u16(vaddr.wrapping_add(2)) as u32) << 16)
+    get_vaddr_u16(vaddr) as u32 | ((get_vaddr_u16(vaddr.wrapping_add(2)) as u32) << 16)
 }
 
 #[inline]

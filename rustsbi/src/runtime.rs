@@ -1,7 +1,12 @@
-use riscv::register::{mcause::{self, Trap, Exception, Interrupt}, mstatus::{self, Mstatus, MPP}, mtval, mtvec::{self, TrapMode}};
 use core::{
-    pin::Pin,
     ops::{Generator, GeneratorState},
+    pin::Pin,
+};
+use riscv::register::{
+    mcause::{self, Exception, Interrupt, Trap},
+    mstatus::{self, Mstatus, MPP},
+    mtval,
+    mtvec::{self, TrapMode},
 };
 
 pub fn init() {
@@ -13,7 +18,7 @@ pub fn init() {
 }
 
 pub struct Runtime {
-    context: SupervisorContext, 
+    context: SupervisorContext,
 }
 
 impl Runtime {
@@ -61,10 +66,15 @@ impl Generator for Runtime {
             Trap::Interrupt(Interrupt::MachineExternal) => MachineTrap::ExternalInterrupt(),
             Trap::Interrupt(Interrupt::MachineTimer) => MachineTrap::MachineTimer(),
             Trap::Interrupt(Interrupt::MachineSoft) => MachineTrap::MachineSoft(),
-            Trap::Exception(Exception::InstructionPageFault) => MachineTrap::InstructionPageFault(mtval),
+            Trap::Exception(Exception::InstructionPageFault) => {
+                MachineTrap::InstructionPageFault(mtval)
+            }
             Trap::Exception(Exception::LoadPageFault) => MachineTrap::LoadPageFault(mtval),
             Trap::Exception(Exception::StorePageFault) => MachineTrap::StorePageFault(mtval),
-            e => panic!("unhandled exception: {:?}! mtval: {:#x?}, ctx: {:#x?}", e, mtval, self.context)
+            e => panic!(
+                "unhandled exception: {:?}! mtval: {:#x?}, ctx: {:#x?}",
+                e, mtval, self.context
+            ),
         };
         GeneratorState::Yielded(trap)
     }
@@ -83,7 +93,7 @@ pub enum MachineTrap {
     StoreFault(usize),
     InstructionPageFault(usize),
     LoadPageFault(usize),
-    StorePageFault(usize)
+    StorePageFault(usize),
 }
 
 #[derive(Debug)]
@@ -119,9 +129,9 @@ pub struct SupervisorContext {
     pub t3: usize,
     pub t4: usize,
     pub t5: usize,
-    pub t6: usize, // 30
-    pub mstatus: Mstatus, // 31
-    pub mepc: usize, // 32
+    pub t6: usize,            // 30
+    pub mstatus: Mstatus,     // 31
+    pub mepc: usize,          // 32
     pub machine_stack: usize, // 33
 }
 
@@ -162,7 +172,8 @@ unsafe extern "C" fn from_machine_save(_supervisor_context: *mut SupervisorConte
 #[naked]
 #[link_section = ".text"]
 pub unsafe extern "C" fn to_supervisor_restore(_supervisor_context: *mut SupervisorContext) -> ! {
-    asm!( // a0:特权级上下文
+    asm!(
+        // a0:特权级上下文
         "sd     sp, 33*8(a0)", // 机器栈顶放进特权级上下文
         "csrw   mscratch, a0", // 新mscratch:特权级上下文
         // mscratch:特权级上下文
@@ -262,7 +273,8 @@ pub unsafe extern "C" fn from_supervisor_save() -> ! {
 #[naked]
 #[link_section = ".text"]
 unsafe extern "C" fn to_machine_restore() -> ! {
-    asm!( // mscratch:特权级上下文
+    asm!(
+        // mscratch:特权级上下文
         "csrr   sp, mscratch", // sp:特权级上下文
         "ld     sp, 33*8(sp)", // sp:机器栈
         "ld     ra, 0*8(sp)
@@ -279,9 +291,9 @@ unsafe extern "C" fn to_machine_restore() -> ! {
         ld      s8, 11*8(sp)
         ld      s9, 12*8(sp)
         ld      s10, 13*8(sp)
-        ld      s11, 14*8(sp)", 
+        ld      s11, 14*8(sp)",
         "addi   sp, sp, 15*8", // sp:机器栈顶
-        "jr     ra", // 其实就是ret
+        "jr     ra",           // 其实就是ret
         options(noreturn)
     )
 }

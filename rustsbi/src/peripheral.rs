@@ -1,7 +1,7 @@
 use riscv::register::mip;
 use rustsbi::println;
 
-use crate::hal::{Serial, msip, pac_encoding::UART0_BASE};
+use crate::hal::{msip, pac_encoding::UART0_BASE, Serial};
 
 pub fn init_peripheral() {
     rustsbi::legacy_stdio::init_legacy_stdio_embedded_hal(Serial::new(UART0_BASE));
@@ -32,9 +32,9 @@ impl rustsbi::Timer for Timer {
         println!("[rustsbi] setTimer");
         use crate::hal::clint::mtimecmp;
         mtimecmp::write(stime_value);
-        unsafe { 
+        unsafe {
             mip::clear_mtimer();
-            mip::set_mtimer() 
+            mip::set_mtimer()
         };
     }
 }
