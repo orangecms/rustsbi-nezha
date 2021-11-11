@@ -1,12 +1,10 @@
 use crate::hal;
 
-use rustsbi::println;
-use crate::hal::{Serial,msip, pac_encoding::UART0_BASE};
+use crate::hal::{msip, pac_encoding::UART0_BASE, Serial};
 use riscv::register::mip;
+use rustsbi::println;
 
 pub fn init_peripheral() {
-
-
     rustsbi::legacy_stdio::init_legacy_stdio_embedded_hal(Serial::new(UART0_BASE));
     rustsbi::init_timer(Timer);
     rustsbi::init_reset(Reset);
