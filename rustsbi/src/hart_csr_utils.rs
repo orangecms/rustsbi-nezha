@@ -48,7 +48,7 @@ fn print_misa() {
                 print!("{}", ext);
             }
         }
-        println!("");
+        println!("\r");
     }
 }
 
@@ -75,7 +75,7 @@ fn print_mideleg() {
         delegs.push("sext")
     }
     println!(
-        "[rustsbi] mideleg: {} ({:#x})",
+        "[rustsbi] mideleg: {} ({:#x})\r",
         delegs.join(", "),
         mideleg.bits()
     );
@@ -128,7 +128,7 @@ fn print_medeleg() {
         delegs.push("spage")
     }
     println!(
-        "[rustsbi] medeleg: {} ({:#x})",
+        "[rustsbi] medeleg: {} ({:#x})\r",
         delegs.join(", "),
         medeleg.bits()
     );
