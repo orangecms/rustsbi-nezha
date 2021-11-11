@@ -27,8 +27,8 @@ pub fn print_hart_csrs() {
 fn ctz(mut x: usize) -> usize {
     let mut ret = 0;
     while (x & 1usize) != 0 {
-        ret = ret + 1;
-        x = x >> 1
+        ret += 1;
+        x >>= 1
     }
     ret
 }
@@ -179,7 +179,7 @@ fn pmp_get(n: usize) -> Option<(usize, usize, usize)> {
             log2len = t1 + PMP_SHIFT + 1;
         }
     } else {
-        addr = addr << PMP_SHIFT;
+        addr <<= PMP_SHIFT;
         log2len = PMP_SHIFT
     }
     Some((port, addr, log2len))
