@@ -1,18 +1,21 @@
 use alloc::vec::Vec;
-use riscv::register::{medeleg, mideleg, misa::{self, MXL}, pmpaddr0, pmpaddr1, pmpaddr10, pmpaddr11, pmpaddr12, pmpaddr13, pmpaddr14, pmpaddr15, pmpaddr2, pmpaddr3, pmpaddr4, pmpaddr5, pmpaddr6, pmpaddr7, pmpaddr8, pmpaddr9, pmpcfg0, pmpcfg2};
+use riscv::register::{
+    medeleg, mideleg,
+    misa::{self, MXL},
+    pmpaddr0, pmpaddr1, pmpaddr10, pmpaddr11, pmpaddr12, pmpaddr13, pmpaddr14, pmpaddr15, pmpaddr2,
+    pmpaddr3, pmpaddr4, pmpaddr5, pmpaddr6, pmpaddr7, pmpaddr8, pmpaddr9, pmpcfg0, pmpcfg2,
+};
 use rustsbi::{print, println};
-pub const PMP_COUNT:usize = 16;
-pub const PMP_SHIFT:usize = 2;
-pub const PMP_R:usize = 0x01;
-pub const PMP_W:usize = 0x02;
-pub const PMP_X:usize = 0x04;
-pub const PMP_A:usize = 0x18;
-pub const PMP_A_TOR:usize = 0x08;
+pub const PMP_COUNT: usize = 16;
+pub const PMP_SHIFT: usize = 2;
+pub const PMP_R: usize = 0x01;
+pub const PMP_W: usize = 0x02;
+pub const PMP_X: usize = 0x04;
+pub const PMP_A: usize = 0x18;
+pub const PMP_A_TOR: usize = 0x08;
 // pub const PMP_A_NA4:usize = 0x10;
-pub const PMP_A_NAPOT:usize = 0x18;
-pub const PMP_L:usize = 0x80;
-
-
+pub const PMP_A_NAPOT: usize = 0x18;
+pub const PMP_L: usize = 0x80;
 
 pub fn print_hart_csrs() {
     print_misa();
@@ -20,26 +23,26 @@ pub fn print_hart_csrs() {
     print_medeleg();
 }
 #[inline]
-fn ctz(mut x:usize) -> usize{
+fn ctz(mut x: usize) -> usize {
     let mut ret = 0;
-    while (x & 1usize) != 0 { 
+    while (x & 1usize) != 0 {
         ret = ret + 1;
         x = x >> 1
     }
     ret
 }
-fn pmp_get(n:usize) -> Option<(usize,usize,usize)>{
-    if n >= PMP_COUNT{
-        return None
+fn pmp_get(n: usize) -> Option<(usize, usize, usize)> {
+    if n >= PMP_COUNT {
+        return None;
     }
     let t1;
     let mut addr;
     let log2len;
     let pmpcfg_shift = (n & 7) << 3;
     let cfgmask = 0xff << pmpcfg_shift;
-    let pmpcfg = if n <= 8{
+    let pmpcfg = if n <= 8 {
         pmpcfg0::read() & cfgmask
-    }else{
+    } else {
         pmpcfg2::read() & cfgmask
     };
     let port = pmpcfg >> pmpcfg_shift;
@@ -60,11 +63,11 @@ fn pmp_get(n:usize) -> Option<(usize,usize,usize)>{
         13 => pmpaddr13::read(),
         14 => pmpaddr14::read(),
         15 => pmpaddr15::read(),
-        _ => 0
+        _ => 0,
     };
     if (port & PMP_A) == PMP_A_NAPOT {
         addr |= 0x1ff;
-        if addr == usize::MAX{
+        if addr == usize::MAX {
             addr = 0;
             log2len = 64;
         } else {
@@ -76,55 +79,61 @@ fn pmp_get(n:usize) -> Option<(usize,usize,usize)>{
         addr = addr << PMP_SHIFT;
         log2len = PMP_SHIFT
     }
-    Some((port,addr,log2len))
+    Some((port, addr, log2len))
 }
 
-pub fn print_hart_pmp(){
+pub fn print_hart_pmp() {
     let mut size;
-    for i in 0..PMP_COUNT{
-        if let Some((port,addr,l2l)) = pmp_get(i){
+    for i in 0..PMP_COUNT {
+        if let Some((port, addr, l2l)) = pmp_get(i) {
             if (port & PMP_A) == 0 {
-                continue
+                continue;
             }
-            size = if l2l < 64{
-                1usize << l2l
-            }else{
-                0
-            };
-            if (port & PMP_A_TOR) == PMP_A_TOR{
-                print!("PMP{}\t 0x{:x} - 0x{:x} (A",i,match i {
-                    0 => 0,
-                    1 => pmpaddr0::read(),
-                    2 => pmpaddr1::read(),
-                    3 => pmpaddr2::read(),
-                    4 => pmpaddr3::read(),
-                    5 => pmpaddr4::read(),
-                    6 => pmpaddr5::read(),
-                    7 => pmpaddr6::read(),
-                    8 => pmpaddr7::read(),
-                    9 => pmpaddr8::read(),
-                    10 => pmpaddr9::read(),
-                    11 => pmpaddr10::read(),
-                    12 => pmpaddr11::read(),
-                    13 => pmpaddr12::read(),
-                    14 => pmpaddr13::read(),
-                    15 => pmpaddr14::read(),
-                    _ => 0
-                } << PMP_SHIFT,addr)
+            size = if l2l < 64 { 1usize << l2l } else { 0 };
+            if (port & PMP_A_TOR) == PMP_A_TOR {
+                print!(
+                    "PMP{}\t 0x{:x} - 0x{:x} (A",
+                    i,
+                    match i {
+                        0 => 0,
+                        1 => pmpaddr0::read(),
+                        2 => pmpaddr1::read(),
+                        3 => pmpaddr2::read(),
+                        4 => pmpaddr3::read(),
+                        5 => pmpaddr4::read(),
+                        6 => pmpaddr5::read(),
+                        7 => pmpaddr6::read(),
+                        8 => pmpaddr7::read(),
+                        9 => pmpaddr8::read(),
+                        10 => pmpaddr9::read(),
+                        11 => pmpaddr10::read(),
+                        12 => pmpaddr11::read(),
+                        13 => pmpaddr12::read(),
+                        14 => pmpaddr13::read(),
+                        15 => pmpaddr14::read(),
+                        _ => 0,
+                    } << PMP_SHIFT,
+                    addr
+                )
             } else {
-                print!("PMP{}\t: 0x{:>08x} - 0x{:>08x} (A",i,addr,addr + size - 1);
+                print!(
+                    "PMP{}\t: 0x{:>08x} - 0x{:>08x} (A",
+                    i,
+                    addr,
+                    addr + size - 1
+                );
             }
-            
-            if (port & PMP_L) != 0{
+
+            if (port & PMP_L) != 0 {
                 print!(",L");
             }
-            if (port & PMP_R) != 0{
+            if (port & PMP_R) != 0 {
                 print!(",R");
             }
-            if (port & PMP_W) != 0{
+            if (port & PMP_W) != 0 {
                 print!(",W");
             }
-            if (port & PMP_X) != 0{
+            if (port & PMP_X) != 0 {
                 print!(",X");
             }
             print!(")\r\n")
@@ -173,7 +182,11 @@ fn print_mideleg() {
     if mideleg.sext() {
         delegs.push("sext")
     }
-    println!("[rustsbi] mideleg: {} ({:#x})", delegs.join(", "), mideleg.bits());
+    println!(
+        "[rustsbi] mideleg: {} ({:#x})",
+        delegs.join(", "),
+        mideleg.bits()
+    );
 }
 
 #[inline]
@@ -222,5 +235,9 @@ fn print_medeleg() {
     if medeleg.store_page_fault() {
         delegs.push("spage")
     }
-    println!("[rustsbi] medeleg: {} ({:#x})", delegs.join(", "), medeleg.bits());
+    println!(
+        "[rustsbi] medeleg: {} ({:#x})",
+        delegs.join(", "),
+        medeleg.bits()
+    );
 }
