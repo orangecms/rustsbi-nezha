@@ -6,30 +6,36 @@
 #![feature(generator_trait)]
 #![feature(naked_functions)]
 #![feature(default_alloc_error_handler)]
+
 mod execute;
 mod feature;
 mod hal;
 mod hart_csr_utils;
 mod peripheral;
 mod runtime;
+
+extern crate alloc;
+extern crate bitflags;
+
+use crate::{hal::write_reg, hart_csr_utils::print_hart_pmp};
 use buddy_system_allocator::LockedHeap;
 use core::panic::PanicInfo;
 use rustsbi::println;
 
-use crate::{hal::write_reg, hart_csr_utils::print_hart_pmp};
-extern crate alloc;
-extern crate bitflags;
 const PER_HART_STACK_SIZE: usize = 8 * 1024; // 8KiB
 const SBI_STACK_SIZE: usize = 2 * PER_HART_STACK_SIZE;
 #[link_section = ".bss.uninit"]
 static mut SBI_STACK: [u8; SBI_STACK_SIZE] = [0; SBI_STACK_SIZE];
+
 const PAYLOAD_OFFSET: usize = 0x4020_0000;
 const SBI_HEAP_SIZE: usize = 8 * 1024; // 8KiB
-static PLATFORM: &str = "T-HEAD Xuantie Platform";
+
 #[link_section = ".bss.uninit"]
 static mut HEAP_SPACE: [u8; SBI_HEAP_SIZE] = [0; SBI_HEAP_SIZE];
 #[global_allocator]
+static PLATFORM: &str = "T-HEAD Xuantie Platform";
 static SBI_HEAP: LockedHeap<32> = LockedHeap::empty();
+
 static DEVICE_TREE_BINARY: &[u8] = include_bytes!("../sunxi.dtb");
 extern "C" fn rust_main() -> ! {
     let hartid = riscv::register::mhartid::read();
