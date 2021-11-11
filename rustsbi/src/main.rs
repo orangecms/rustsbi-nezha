@@ -32,21 +32,6 @@ static SBI_HEAP: LockedHeap<32> = LockedHeap::empty();
 
 static DEVICE_TREE_BINARY: &[u8] = &[1, 2, 3];
 
-#[cfg_attr(not(test), panic_handler)]
-#[allow(unused)]
-fn panic(info: &PanicInfo) -> ! {
-    let hart_id = riscv::register::mhartid::read();
-    // 输出的信息大概是“[rustsbi-panic] hart 0 panicked at ...”
-    println!("[rustsbi-panic] hart {} {}", hart_id, info);
-    println!("[rustsbi-panic] system shutdown scheduled due to RustSBI panic");
-    use rustsbi::Reset;
-    peripheral::Reset.system_reset(
-        rustsbi::reset::RESET_TYPE_SHUTDOWN,
-        rustsbi::reset::RESET_REASON_SYSTEM_FAILURE,
-    );
-    loop {}
-}
-
 extern "C" fn rust_main() -> ! {
     let hartid = riscv::register::mhartid::read();
     if hartid == 0 {
@@ -72,17 +57,6 @@ extern "C" fn rust_main() -> ! {
     execute::execute_supervisor(0x40200000, hartid, DEVICE_TREE_BINARY.as_ptr() as usize)
 }
 
-fn init_pmp() {
-    use riscv::register::*;
-    let cfg = 0b000011110000111100001111usize;
-    pmpcfg0::write(0);
-    pmpcfg2::write(0);
-    pmpcfg0::write(cfg);
-    pmpaddr0::write(0x40000000usize >> 2);
-    pmpaddr1::write(0x40200000usize >> 2);
-    pmpaddr2::write(0x80000000usize >> 2);
-    pmpaddr3::write(0xc0000000usize >> 2);
-}
 fn init_bss() {
     extern "C" {
         static mut ebss: u32;
@@ -95,6 +69,18 @@ fn init_bss() {
         r0::zero_bss(&mut sbss, &mut ebss);
         r0::init_data(&mut sdata, &mut edata, &sidata);
     }
+}
+
+fn init_pmp() {
+    use riscv::register::*;
+    let cfg = 0b000011110000111100001111usize;
+    pmpcfg0::write(0);
+    pmpcfg2::write(0);
+    pmpcfg0::write(cfg);
+    pmpaddr0::write(0x40000000usize >> 2);
+    pmpaddr1::write(0x40200000usize >> 2);
+    pmpaddr2::write(0x80000000usize >> 2);
+    pmpaddr3::write(0xc0000000usize >> 2);
 }
 
 fn init_heap() {
@@ -131,6 +117,21 @@ fn delegate_interrupt_exception() {
         // 不打开mie::set_mtimer
         mie::set_msoft();
     }
+}
+
+#[cfg_attr(not(test), panic_handler)]
+#[allow(unused)]
+fn panic(info: &PanicInfo) -> ! {
+    let hart_id = riscv::register::mhartid::read();
+    // 输出的信息大概是“[rustsbi-panic] hart 0 panicked at ...”
+    println!("[rustsbi-panic] hart {} {}", hart_id, info);
+    println!("[rustsbi-panic] system shutdown scheduled due to RustSBI panic");
+    use rustsbi::Reset;
+    peripheral::Reset.system_reset(
+        rustsbi::reset::RESET_TYPE_SHUTDOWN,
+        rustsbi::reset::RESET_REASON_SYSTEM_FAILURE,
+    );
+    loop {}
 }
 
 #[naked]
