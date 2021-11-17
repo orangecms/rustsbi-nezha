@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "rustsbi-nezha",
+    "rustsbi",
     "test-kernel",
     "xtask"
 ]
