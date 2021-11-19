@@ -1,10 +1,14 @@
 use crate::feature;
-use crate::runtime::{MachineTrap, Runtime, SupervisorContext};
+use crate::{
+    hal::read_reg,
+    runtime::{MachineTrap, Runtime, SupervisorContext},
+};
 use core::{
     ops::{Generator, GeneratorState},
     pin::Pin,
 };
 use riscv::register::scause::{Exception, Trap};
+use rustsbi::println;
 
 pub fn execute_supervisor(supervisor_mepc: usize, a0: usize, a1: usize) -> ! {
     let mut rt = Runtime::new_sbi_supervisor(supervisor_mepc, a0, a1);
@@ -24,6 +28,7 @@ pub fn execute_supervisor(supervisor_mepc: usize, a0: usize, a1: usize) -> ! {
             }
             GeneratorState::Yielded(MachineTrap::IllegalInstruction()) => {
                 let ctx = rt.context_mut();
+                // FIXME: get_vaddr_u32这个过程可能出错。
                 let ins = unsafe { get_vaddr_u32(ctx.mepc) } as usize;
                 if !emulate_illegal_instruction(ctx, ins) {
                     unsafe {
@@ -48,35 +53,63 @@ pub fn execute_supervisor(supervisor_mepc: usize, a0: usize, a1: usize) -> ! {
             GeneratorState::Yielded(MachineTrap::MachineSoft()) => {
                 feature::forward_supervisor_soft()
             }
-            GeneratorState::Yielded(MachineTrap::InstructionFault(_addr)) => {
+            // todo：编写样例，验证store page fault和instruction page fault
+            GeneratorState::Yielded(MachineTrap::InstructionFault(addr)) => {
                 let ctx = rt.context_mut();
-                unsafe {
-                    feature::do_transfer_trap(ctx, Trap::Exception(Exception::InstructionFault))
-                }
-            }
-            GeneratorState::Yielded(MachineTrap::InstructionPageFault(_addr)) => {
-                let ctx = rt.context_mut();
-                unsafe {
-                    feature::do_transfer_trap(ctx, Trap::Exception(Exception::InstructionPageFault))
+                if feature::is_page_fault(addr) {
+                    unsafe {
+                        feature::do_transfer_trap(
+                            ctx,
+                            Trap::Exception(Exception::InstructionPageFault),
+                        )
+                    }
+                } else {
+                    unsafe {
+                        feature::do_transfer_trap(ctx, Trap::Exception(Exception::InstructionFault))
+                    }
                 }
             }
             GeneratorState::Yielded(MachineTrap::LoadFault(_addr)) => {
                 let ctx = rt.context_mut();
+
                 unsafe { feature::do_transfer_trap(ctx, Trap::Exception(Exception::LoadFault)) }
             }
             GeneratorState::Yielded(MachineTrap::LoadPageFault(_addr)) => {
                 let ctx = rt.context_mut();
                 unsafe { feature::do_transfer_trap(ctx, Trap::Exception(Exception::LoadPageFault)) }
             }
-            GeneratorState::Yielded(MachineTrap::StorePageFault(_addr)) => {
+            GeneratorState::Yielded(MachineTrap::StorePageFault(addr)) => {
                 let ctx = rt.context_mut();
-                unsafe {
-                    feature::do_transfer_trap(ctx, Trap::Exception(Exception::StorePageFault))
+                if feature::is_page_fault(addr) {
+                    unsafe {
+                        feature::do_transfer_trap(ctx, Trap::Exception(Exception::LoadPageFault))
+                    }
+                } else {
+                    unsafe { feature::do_transfer_trap(ctx, Trap::Exception(Exception::LoadFault)) }
                 }
             }
-            GeneratorState::Yielded(MachineTrap::StoreFault(_addr)) => {
+            GeneratorState::Yielded(MachineTrap::StoreFault(addr)) => {
                 let ctx = rt.context_mut();
-                unsafe { feature::do_transfer_trap(ctx, Trap::Exception(Exception::StoreFault)) }
+                if feature::is_page_fault(addr) {
+                    unsafe {
+                        feature::do_transfer_trap(ctx, Trap::Exception(Exception::StorePageFault))
+                    }
+                } else {
+                    unsafe {
+                        feature::do_transfer_trap(ctx, Trap::Exception(Exception::StoreFault))
+                    }
+                }
+            }
+            GeneratorState::Yielded(MachineTrap::InstructionPageFault(addr)) => {
+                let ctx = rt.context_mut();
+                println!("[rustsbi] {:?}", Exception::InstructionPageFault);
+                println!(
+                    "[rustsbi] addr: [0x{:x}] mepc: [0x{:x}] 0x{:x}",
+                    addr,
+                    ctx.mepc,
+                    unsafe { read_reg::<usize>(addr, 0) }
+                );
+                loop {}
             }
             GeneratorState::Complete(()) => unreachable!(),
         }
@@ -110,6 +143,9 @@ fn emulate_sbi_call(ctx: &mut SupervisorContext) -> bool {
 
 fn emulate_illegal_instruction(ctx: &mut SupervisorContext, ins: usize) -> bool {
     if feature::emulate_rdtime(ctx, ins) {
+        return true;
+    }
+    if feature::emulate_sfence_vma(ctx, ins) {
         return true;
     }
     false
