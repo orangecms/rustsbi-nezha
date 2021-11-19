@@ -32,8 +32,8 @@ const SBI_HEAP_SIZE: usize = 8 * 1024; // 8KiB
 
 #[link_section = ".bss.uninit"]
 static mut HEAP_SPACE: [u8; SBI_HEAP_SIZE] = [0; SBI_HEAP_SIZE];
-#[global_allocator]
 static PLATFORM: &str = "T-HEAD Xuantie Platform";
+#[global_allocator]
 static SBI_HEAP: LockedHeap<32> = LockedHeap::empty();
 
 static DEVICE_TREE_BINARY: &[u8] = include_bytes!("../sunxi.dtb");
