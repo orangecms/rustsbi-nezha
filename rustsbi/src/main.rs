@@ -101,15 +101,27 @@ fn init_plic() {
     }
 }
 
+// see riscv-privileged spec v1.10
 fn delegate_interrupt_exception() {
     use riscv::register::{medeleg, mideleg, mie};
     unsafe {
         mideleg::set_sext();
         mideleg::set_stimer();
         mideleg::set_ssoft();
+        // p 35, table 3.6
         medeleg::set_instruction_misaligned();
+        medeleg::set_instruction_fault();
+        medeleg::set_illegal_instruction();
         medeleg::set_breakpoint();
+        medeleg::set_load_misaligned(); // TODO: handle this?
+        medeleg::set_load_fault(); // PMP violation, shouldn't be hit
+        medeleg::set_store_misaligned();
+        medeleg::set_store_fault();
         medeleg::set_user_env_call();
+        // Do not delegate env call from S-mode nor M-mode
+        medeleg::set_instruction_page_fault();
+        medeleg::set_load_page_fault();
+        medeleg::set_store_page_fault();
         mie::set_msoft();
     }
 }
