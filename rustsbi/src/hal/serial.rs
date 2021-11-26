@@ -1,11 +1,9 @@
-use core::convert::Infallible;
-use embedded_hal::serial::{Read, Write};
-// use crate::pac::{UART_RBR, UART_THR, UART_USR};
-
 use super::{
     pac_encoding::{UART_LSR, UART_RBR, UART_THR, UART_USR},
     read_reg, write_reg,
 };
+use core::convert::Infallible;
+use embedded_hal::serial::{Read, Write};
 //const SUNXI_UART_USR_NF:u32 = 0x02;
 const SUNXI_UART_USR_RFNE: u32 = 0x04;
 pub struct Serial {
