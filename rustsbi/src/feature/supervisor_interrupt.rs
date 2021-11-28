@@ -3,24 +3,28 @@ use riscv::register::{mie, mip, mstatus};
 
 static mut DEVINTRENTRY: usize = 0;
 
+const MPP_MASK: usize = !(3 << 11);
+const MPP_S: usize = 1 << 11;
+const MPRV: usize = 1 << 17;
+
 pub unsafe fn call_supervisor_interrupt(ctx: &mut SupervisorContext) {
     let mut mstatus: usize;
     asm!("csrr {}, mstatus", out(reg) mstatus);
     // set mstatus.mprv
-    mstatus |= 1 << 17;
+    mstatus |= MPRV;
     // it may trap from U/S Mode
     // save mpp and set mstatus.mpp to S Mode
     let mpp = (mstatus >> 11) & 3;
-    mstatus = mstatus & !(3 << 11);
-    mstatus |= 1 << 11;
+    mstatus &= MPP_MASK;
+    mstatus |= MPP_S;
     // drop mstatus.mprv protection
     asm!("csrw mstatus, {}", in(reg) mstatus);
     // compiler helps us save/restore caller-saved registers
     devintr();
     // restore mstatus
-    mstatus = mstatus & !(3 << 11);
+    mstatus &= MPP_MASK;
     mstatus |= mpp << 11;
-    mstatus -= 1 << 17;
+    mstatus -= MPRV;
     asm!("csrw mstatus, {}", in(reg) mstatus);
     ctx.mstatus = mstatus::read();
 }
@@ -42,9 +46,9 @@ pub fn emulate_sbi_rustsbi_nezha_sext(ctx: &mut SupervisorContext) -> bool {
         // return values
         ctx.a0 = 0; // SbiRet::error = SBI_SUCCESS
         ctx.a1 = 0; // SbiRet::value = 0
-        return true;
+        true
     } else {
-        return false;
+        false
     }
 }
 
@@ -67,10 +71,8 @@ pub fn preprocess_supervisor_external(ctx: &mut SupervisorContext) {
     if ctx.a7 == 0x0 {
         unsafe {
             let mtip = mip::read().mtimer();
-            if mtip {
-                if DEVINTRENTRY != 0 {
-                    mie::set_mext();
-                }
+            if mtip && DEVINTRENTRY != 0 {
+                mie::set_mext();
             }
         }
     }
