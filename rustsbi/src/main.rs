@@ -28,6 +28,7 @@ const SBI_STACK_SIZE: usize = 2 * PER_HART_STACK_SIZE;
 static mut SBI_STACK: [u8; SBI_STACK_SIZE] = [0; SBI_STACK_SIZE];
 
 const PAYLOAD_OFFSET: usize = 0x4020_0000;
+const DTB_OFFSET: usize = 0x4120_0000;
 const SBI_HEAP_SIZE: usize = 8 * 1024; // 8KiB
 
 #[link_section = ".bss.uninit"]
@@ -36,7 +37,6 @@ static PLATFORM: &str = "T-HEAD Xuantie Platform";
 #[global_allocator]
 static SBI_HEAP: LockedHeap<32> = LockedHeap::empty();
 
-static DEVICE_TREE_BINARY: &[u8] = include_bytes!("../sunxi.dtb");
 extern "C" fn rust_main() -> ! {
     let hartid = riscv::register::mhartid::read();
     if hartid == 0 {
@@ -57,14 +57,13 @@ extern "C" fn rust_main() -> ! {
         );
     }
     delegate_interrupt_exception();
-    let dtb_ptr = DEVICE_TREE_BINARY.as_ptr() as usize;
     if hartid == 0 {
         hart_csr_utils::print_hart_csrs();
         println!("[rustsbi] enter supervisor 0x{:x}\r", PAYLOAD_OFFSET);
-        println!("[rustsbi] dtb handed over from 0x{:x}\r", dtb_ptr);
+        println!("[rustsbi] dtb handed over from 0x{:x}\r", DTB_OFFSET);
         print_hart_pmp();
     }
-    execute::execute_supervisor(PAYLOAD_OFFSET, hartid, dtb_ptr)
+    execute::execute_supervisor(PAYLOAD_OFFSET, hartid, DTB_OFFSET)
 }
 
 fn init_bss() {
