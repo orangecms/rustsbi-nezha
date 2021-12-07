@@ -20,6 +20,7 @@ extern crate bitflags;
 use crate::{hal::write_reg, hart_csr_utils::print_hart_pmp};
 use buddy_system_allocator::LockedHeap;
 use core::panic::PanicInfo;
+use riscv::register::{fcsr, mstatus};
 use rustsbi::println;
 
 const PER_HART_STACK_SIZE: usize = 8 * 1024; // 8KiB
@@ -107,8 +108,36 @@ fn init_plic() {
     }
 }
 
+/*
+ * From stock Nezha OpenSBI:
+ *
+ * MIDELEG : 0x0000000000000222
+ * MEDELEG : 0x000000000000b1ff
+ *
+ * QEMU OpenSBI 0.9:
+ *
+ * Boot HART MIDELEG         : 0x0000000000000222
+ * Boot HART MEDELEG         : 0x000000000000b109
+ */
 // see riscv-privileged spec v1.10
+/*
+ * The TW (Timeout Wait) bit supports intercepting the WFI instruction (see
+ * Section 3.2.3). When TW=0, the WFI instruction is permitted in S-mode.
+ * When TW=1, if WFI is executed in S- mode, and it does not complete within
+ * an implementation-specific, bounded time limit, the WFI instruction causes
+ * an illegal instruction trap. The time limit may always be 0, in which case
+ * WFI always causes an illegal instruction trap in S-mode when TW=1.
+ * TW is hard-wired to 0 when S-mode is not supported.
+ */
 fn delegate_interrupt_exception() {
+    unsafe { mstatus::set_mxr() };
+    unsafe { mstatus::set_sum() };
+    unsafe { mstatus::clear_tvm() };
+    unsafe { mstatus::clear_tsr() };
+    unsafe { mstatus::clear_tw() };
+    unsafe { mstatus::set_fs(mstatus::FS::Dirty) };
+    unsafe { fcsr::set_rounding_mode(fcsr::RoundingMode::RoundToNearestEven) };
+
     use riscv::register::{medeleg, mideleg, mie};
     unsafe {
         mideleg::set_sext();
