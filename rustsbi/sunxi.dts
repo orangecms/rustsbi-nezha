@@ -40,7 +40,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,115200n8 clk_ignore_unused loglevel=7 initcall_debug=0 earlycon=sbi";
+		bootargs = "console=ttyS0,115200n8 clk_ignore_unused loglevel=7 initcall_debug=0 earlycon=sbi single init=/bbin/hello";
 		stdout-path = "serial0:115200n8";
 	};
 
