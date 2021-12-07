@@ -1,17 +1,21 @@
 use crate::runtime::SupervisorContext;
 use riscv::register::{mie, mip, mstatus};
+use rustsbi::println;
 
 static mut DEVINTRENTRY: usize = 0;
 
-const MPP_MASK: usize = !(3 << 11);
-const MPP_S: usize = 1 << 11;
-const MPRV: usize = 1 << 17;
+pub const MPP_MASK: usize = !(3 << 11);
+pub const MPP_S: usize = 1 << 11;
+pub const MPRV: usize = 1 << 17;
+pub const SUM: usize = 1 << 18;
+pub const MXR: usize = 1 << 19;
 
 pub unsafe fn call_supervisor_interrupt(ctx: &mut SupervisorContext) {
     let mut mstatus: usize;
     asm!("csrr {}, mstatus", out(reg) mstatus);
+    println!("[rustsbi] Supervisor interrupt: {:x?}\r", mstatus);
     // set mstatus.mprv
-    mstatus |= MPRV;
+    mstatus |= MPRV | MXR | SUM;
     // it may trap from U/S Mode
     // save mpp and set mstatus.mpp to S Mode
     let mpp = (mstatus >> 11) & 3;
@@ -24,7 +28,7 @@ pub unsafe fn call_supervisor_interrupt(ctx: &mut SupervisorContext) {
     // restore mstatus
     mstatus &= MPP_MASK;
     mstatus |= mpp << 11;
-    mstatus -= MPRV;
+    mstatus -= MPRV | MXR | SUM;
     asm!("csrw mstatus, {}", in(reg) mstatus);
     ctx.mstatus = mstatus::read();
 }
