@@ -10,7 +10,7 @@ rustsbi = "0.2.0-alpha.3"
 bitflags = "1"
 buddy_system_allocator = "0.8"
 lazy_static = { version = "1", features = ["spin_no_std"] }
-riscv = { git = "https://github.com/rust-embedded/riscv", rev = "7e9d2e5b", features = ["inline-asm"] }
+riscv = { version = "0.7.0", features = ["inline-asm"] }
 embedded-hal = "1.0.0-alpha.4"
 vcell = "0.1.2"
 r0 = "1.0"
