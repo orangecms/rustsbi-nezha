@@ -146,7 +146,8 @@ fn delegate_interrupt_exception() {
         // p 35, table 3.6
         medeleg::set_instruction_misaligned();
         medeleg::set_instruction_fault();
-        medeleg::set_illegal_instruction();
+        // This currently causes Linux to panic. We need to handle WFI in SBI.
+        // medeleg::set_illegal_instruction();
         medeleg::set_breakpoint();
         medeleg::set_load_misaligned(); // TODO: handle this?
         medeleg::set_load_fault(); // PMP violation, shouldn't be hit
