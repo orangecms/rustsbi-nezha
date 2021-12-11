@@ -16,7 +16,7 @@ impl Serial {
 }
 impl Read<u8> for Serial {
     type Error = Infallible;
-    fn try_read(&mut self) -> nb::Result<u8, Self::Error> {
+    fn read(&mut self) -> nb::Result<u8, Self::Error> {
         if unsafe { (read_reg::<u32>(self.uart, UART_LSR) & (1 << 0)) != 0 } {
             Ok(unsafe { (read_reg::<u32>(self.uart, UART_RBR) & 0xff) as u8 })
         } else {
@@ -27,13 +27,13 @@ impl Read<u8> for Serial {
 impl Write<u8> for Serial {
     type Error = Infallible;
 
-    fn try_write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
+    fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         while unsafe { read_reg::<u32>(self.uart, UART_USR) & SUNXI_UART_USR_RFNE } == 0 {}
         unsafe { write_reg::<u32>(self.uart, UART_THR, word as u32) }
         Ok(())
     }
 
-    fn try_flush(&mut self) -> nb::Result<(), Self::Error> {
+    fn flush(&mut self) -> nb::Result<(), Self::Error> {
         while unsafe { read_reg::<u32>(self.uart, UART_USR) & SUNXI_UART_USR_RFNE } == 0 {}
         Ok(())
     }

@@ -28,7 +28,7 @@ pub fn execute_supervisor(supervisor_mepc: usize, a0: usize, a1: usize) -> ! {
                     println!("[rustsbi] {:x?} {:x?}\r", ctx.a7, ctx.a6);
                     println!("{:#04X?}\r", [ctx.a0, ctx.a1, ctx.a2]);
                 }
-                let param = [ctx.a0, ctx.a1, ctx.a2, ctx.a3, ctx.a4];
+                let param = [ctx.a0, ctx.a1, ctx.a2, ctx.a3, ctx.a4, ctx.a5];
                 let ans = rustsbi::ecall(ctx.a7, ctx.a6, param);
                 ctx.a0 = ans.error;
                 ctx.a1 = ans.value;

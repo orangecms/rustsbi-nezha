@@ -15,7 +15,7 @@ impl rustsbi::Ipi for Ipi {
     fn max_hart_id(&self) -> usize {
         1
     }
-    fn send_ipi_many(&mut self, hart_mask: rustsbi::HartMask) -> rustsbi::SbiRet {
+    fn send_ipi_many(&self, hart_mask: rustsbi::HartMask) -> rustsbi::SbiRet {
         for i in 0..=self.max_hart_id() {
             if hart_mask.has_bit(i) {
                 msip::set_ipi(i);
@@ -27,7 +27,7 @@ impl rustsbi::Ipi for Ipi {
 }
 struct Timer;
 impl rustsbi::Timer for Timer {
-    fn set_timer(&mut self, stime_value: u64) {
+    fn set_timer(&self, stime_value: u64) {
         // This function must clear the pending timer interrupt bit as well.
         println!("[rustsbi] setTimer");
         use crate::hal::clint::mtimecmp;
