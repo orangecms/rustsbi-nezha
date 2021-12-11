@@ -1,8 +1,8 @@
 [package]
 name = "rustsbi-nezha"
 version = "0.1.0"
-edition = "2018"
-authors = ["ez4yunfeng2<ez4yunfeng2@stu.hunau.edu.cn>"]
+edition = "2021"
+authors = ["ez4yunfeng2<ez4yunfeng2@stu.hunau.edu.cn>", "Daniel Maslowski <info@orangecms.org>"]
 
 [dependencies]
 nb = "1"
