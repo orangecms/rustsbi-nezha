@@ -11,7 +11,7 @@ enum CompileMode {
     Debug,
     Release
 }
-const DEFAULT_TARGET: &'static str = "riscv64imac-unknown-none-elf";
+const DEFAULT_TARGET: &'static str = "riscv64gc-unknown-none-elf";
 fn main() {
     let matches = clap_app!(xtask =>
         (version: crate_version!())
