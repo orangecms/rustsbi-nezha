@@ -3,18 +3,22 @@ use riscv::register::{
     mepc,
     mtvec::{self, TrapMode},
 };
+use rustsbi::println;
 
 // This function will lookup virtual memory module and page table system
 // if memory fault from address `addr` is a page fault, return true
 // otherwise when not a page fault, or when paging is disabled, return false
 pub fn is_page_fault(addr: usize) -> bool {
     if !is_s1p9_mstatus_sv39_mode() {
+        println!("[rustsbi] PageFault: !is_s1p9_mstatus_sv39_mode\r");
         return false;
     }
     if !check_sext_sv39(addr) {
+        println!("[rustsbi] PageFault: !check_sext_sv39\r");
         return true;
     }
     let base_ppn = read_sptbr_ppn();
+    println!("[rustsbi] PageFault: base_ppn {:#04x?}\r", base_ppn);
     let level_2_ppn = unsafe {
         let vpn2 = (addr >> 30) & 0x1FF;
         let ptr = ((base_ppn << 12) as *const usize).add(vpn2);
@@ -35,6 +39,7 @@ pub fn is_page_fault(addr: usize) -> bool {
         }
         (level_2_pte >> 10) & 0x3F_FFFF_FFFF
     };
+    println!("[rustsbi] PageFault: level_2_ppn {:#04x?}\r", level_2_ppn);
     let level_1_ppn = unsafe {
         let vpn1 = (addr >> 21) & 0x1FF;
         let ptr = ((level_2_ppn << 12) as *const usize).add(vpn1);
@@ -55,6 +60,7 @@ pub fn is_page_fault(addr: usize) -> bool {
         }
         (level_1_pte >> 10) & 0x3F_FFFF_FFFF
     };
+    println!("[rustsbi] PageFault: level_1_ppn {:#04x?}\r", level_1_ppn);
     let _ppn = unsafe {
         let vpn0 = (addr >> 12) & 0x1FF;
         let ptr = ((level_1_ppn << 12) as *const usize).add(vpn0);
@@ -74,7 +80,11 @@ pub fn is_page_fault(addr: usize) -> bool {
         }
         (final_pte >> 10) & 0x3F_FFFF_FFFF
     };
+    println!("[rustsbi] PageFault: _ppn {:#04x?}\r", _ppn);
     // 到这一步都没有错误，说明查找是成功的，并非页异常
+    // There is no error at this step, indicating that the search was
+    // successful, not a page exception
+    println!("[rustsbi] PageFault: all ok\r");
     false
 }
 
