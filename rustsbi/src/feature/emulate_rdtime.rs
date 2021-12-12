@@ -12,9 +12,9 @@ pub fn emulate_rdtime(ctx: &mut SupervisorContext, ins: usize) -> bool {
         let time_usize = mtime as usize;
         set_register_xi(ctx, rd, time_usize);
         ctx.mepc = ctx.mepc.wrapping_add(4); // skip current instruction
-        return true;
+        true
     } else {
-        return false; // is not a rdtime instruction
+        false // is not a rdtime instruction
     }
 }
 

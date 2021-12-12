@@ -35,8 +35,8 @@ pub fn emulate_sfence_vma(ctx: &mut SupervisorContext, ins: usize) -> bool {
         unsafe { asm!(".word 0x10400073") }; // sfence.vm x0
                                              // ::"r"(rs1_vaddr)
         ctx.mepc = ctx.mepc.wrapping_add(4); // skip current instruction
-        return true;
+        true
     } else {
-        return false; // is not a sfence.vma instruction
+        false // is not a sfence.vma instruction
     }
 }
