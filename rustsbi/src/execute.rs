@@ -16,26 +16,32 @@ pub fn execute_supervisor(supervisor_mepc: usize, a0: usize, a1: usize) -> ! {
         match Pin::new(&mut rt).resume(()) {
             GeneratorState::Yielded(MachineTrap::SbiCall()) => {
                 let ctx = rt.context_mut();
+                /*
                 if ctx.a7 != 0x1 {
                     println!("[rustsbi] Who ya gonna call?\r");
                 }
+                */
                 if emulate_sbi_call(ctx) {
                     continue;
                 }
                 // specific for 1.9.1; see document for details
                 feature::preprocess_supervisor_external(ctx);
+                /*
                 if ctx.a7 != 0x1 {
                     println!("[rustsbi] {:x?} {:x?}\r", ctx.a7, ctx.a6);
                     println!("{:#04X?}\r", [ctx.a0, ctx.a1, ctx.a2]);
                 }
+                */
                 let param = [ctx.a0, ctx.a1, ctx.a2, ctx.a3, ctx.a4, ctx.a5];
                 let ans = rustsbi::ecall(ctx.a7, ctx.a6, param);
                 ctx.a0 = ans.error;
                 ctx.a1 = ans.value;
                 ctx.mepc = ctx.mepc.wrapping_add(4);
+                /*
                 if ctx.a7 != 0x1 {
                     println!("[rustsbi] {:x?} {:x?}\r", ctx.a0, ctx.a1);
                 }
+                */
             }
             GeneratorState::Yielded(MachineTrap::IllegalInstruction()) => {
                 let ctx = rt.context_mut();
