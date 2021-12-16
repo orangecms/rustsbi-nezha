@@ -4,7 +4,9 @@ use rustsbi::println;
 use crate::hal::{msip, pac_encoding::UART0_BASE, Serial};
 
 pub fn init_peripheral() {
-    rustsbi::legacy_stdio::init_legacy_stdio_embedded_hal(Serial::new(UART0_BASE));
+    // serial is used for both println and SBI console
+    let serial = Serial::new(UART0_BASE);
+    rustsbi::legacy_stdio::init_legacy_stdio_embedded_hal(serial);
     rustsbi::init_timer(Timer);
     rustsbi::init_reset(Reset);
     rustsbi::init_ipi(Ipi);
@@ -25,14 +27,15 @@ impl rustsbi::Ipi for Ipi {
         rustsbi::SbiRet::ok(0)
     }
 }
+
 struct Timer;
 impl rustsbi::Timer for Timer {
     fn set_timer(&self, stime_value: u64) {
-        // This function must clear the pending timer interrupt bit as well.
         println!("[rustsbi] setTimer");
         use crate::hal::clint::mtimecmp;
         mtimecmp::write(stime_value);
         unsafe {
+            // clear the pending timer interrupt bit as well.
             mip::clear_mtimer();
             mip::set_mtimer()
         };
@@ -43,6 +46,7 @@ pub struct Reset;
 impl rustsbi::Reset for Reset {
     fn system_reset(&self, reset_type: usize, reset_reason: usize) -> rustsbi::SbiRet {
         println!("[rustsbi] reset triggered! todo: shutdown all harts on Nezha; program halt. Type: {}, reason: {}", reset_type, reset_reason);
+        // TODO: should we simply WFI?
         loop {}
     }
 }

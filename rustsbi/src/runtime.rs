@@ -11,6 +11,7 @@ use riscv::register::{
 
 pub fn init() {
     let mut addr = from_supervisor_save as usize;
+    // Must be aligned to 4 bytes
     if addr & 0x2 != 0 {
         addr += 0x2; // 必须对齐到4个字节
     }
@@ -161,7 +162,7 @@ unsafe extern "C" fn from_machine_save(_supervisor_context: *mut SupervisorConte
         sd      s8, 11*8(sp)
         sd      s9, 12*8(sp)
         sd      s10, 13*8(sp)
-        sd      s11, 14*8(sp)", 
+        sd      s11, 14*8(sp)",
         // a0:特权级上下文
         "j      {to_supervisor_restore}",
         to_supervisor_restore = sym to_supervisor_restore,

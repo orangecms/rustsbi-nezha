@@ -295,9 +295,11 @@ fn emulate_illegal_instruction(ctx: &mut SupervisorContext, ins: usize) -> bool 
     if feature::emulate_sfence_vma(ctx, ins) {
         return true;
     }
+    // TODO: unnecessary if TW is unset
     if emulate_wfi(ctx, ins) {
         return true;
     }
+    // TODO: unnecessary if HW FPU is present and Linux configured for it
     if emulate_float(ctx, ins) {
         return true;
     }

@@ -112,6 +112,15 @@ unsafe fn init_plic() {
     write_reg(addr, 0x001ffffc, 0x1)
 }
 
+/*
+ * The TW (Timeout Wait) bit supports intercepting the WFI instruction (see
+ * Section 3.2.3). When TW=0, the WFI instruction is permitted in S-mode.
+ * When TW=1, if WFI is executed in S- mode, and it does not complete within
+ * an implementation-specific, bounded time limit, the WFI instruction causes
+ * an illegal instruction trap. The time limit may always be 0, in which case
+ * WFI always causes an illegal instruction trap in S-mode when TW=1.
+ * TW is hard-wired to 0 when S-mode is not supported.
+ */
 unsafe fn init_mstatus() {
     mstatus::set_mxr();
     mstatus::set_sum();
@@ -134,15 +143,6 @@ unsafe fn init_mstatus() {
  * Boot HART MEDELEG         : 0x000000000000b109
  */
 // see riscv-privileged spec v1.10
-/*
- * The TW (Timeout Wait) bit supports intercepting the WFI instruction (see
- * Section 3.2.3). When TW=0, the WFI instruction is permitted in S-mode.
- * When TW=1, if WFI is executed in S- mode, and it does not complete within
- * an implementation-specific, bounded time limit, the WFI instruction causes
- * an illegal instruction trap. The time limit may always be 0, in which case
- * WFI always causes an illegal instruction trap in S-mode when TW=1.
- * TW is hard-wired to 0 when S-mode is not supported.
- */
 unsafe fn delegate_interrupt_exception() {
     mideleg::set_sext();
     mideleg::set_stimer();
@@ -150,8 +150,8 @@ unsafe fn delegate_interrupt_exception() {
     // p 35, table 3.6
     medeleg::set_instruction_misaligned();
     medeleg::set_instruction_fault();
-    // This currently causes Linux to panic. We need to handle WFI in SBI.
-    // medeleg::set_illegal_instruction();
+    // Do not medeleg::set_illegal_instruction();
+    // We need to handle sfence.VMA and timer access in SBI.
     medeleg::set_breakpoint();
     medeleg::set_load_misaligned(); // TODO: handle this?
     medeleg::set_load_fault(); // PMP violation, shouldn't be hit
