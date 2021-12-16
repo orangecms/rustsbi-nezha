@@ -21,6 +21,7 @@ use crate::{hal::write_reg, hart_csr_utils::print_hart_pmp};
 use buddy_system_allocator::LockedHeap;
 use core::panic::PanicInfo;
 use riscv::register::{fcsr, mstatus};
+use riscv::register::{medeleg, mideleg, mie};
 use rustsbi::println;
 
 const PER_HART_STACK_SIZE: usize = 8 * 1024; // 8KiB
@@ -47,7 +48,10 @@ extern "C" fn rust_main() -> ! {
     runtime::init();
     if hartid == 0 {
         init_heap();
-        init_plic();
+        unsafe {
+            init_plic();
+            // init_mstatus();
+        }
         peripheral::init_peripheral();
         println!("[rustsbi] RustSBI version {}\r", rustsbi::VERSION);
         println!("{}", rustsbi::LOGO);
@@ -57,7 +61,9 @@ extern "C" fn rust_main() -> ! {
             env!("CARGO_PKG_VERSION")
         );
     }
-    delegate_interrupt_exception();
+    unsafe {
+        delegate_interrupt_exception();
+    }
     if hartid == 0 {
         hart_csr_utils::print_hart_csrs();
         println!("[rustsbi] enter supervisor 0x{:x}\r", PAYLOAD_OFFSET);
@@ -100,12 +106,20 @@ fn init_pmp() {
     pmpaddr4::write(0xffffffffusize >> 2);
 }
 
-fn init_plic() {
-    unsafe {
-        let mut addr: usize;
-        asm!("csrr {}, 0xfc1", out(reg) addr);
-        write_reg(addr, 0x001ffffc, 0x1)
-    }
+unsafe fn init_plic() {
+    let mut addr: usize;
+    asm!("csrr {}, 0xfc1", out(reg) addr);
+    write_reg(addr, 0x001ffffc, 0x1)
+}
+
+unsafe fn init_mstatus() {
+    mstatus::set_mxr();
+    mstatus::set_sum();
+    mstatus::clear_tvm();
+    mstatus::clear_tsr();
+    mstatus::clear_tw();
+    mstatus::set_fs(mstatus::FS::Dirty);
+    fcsr::set_rounding_mode(fcsr::RoundingMode::RoundToNearestEven);
 }
 
 /*
@@ -129,37 +143,26 @@ fn init_plic() {
  * WFI always causes an illegal instruction trap in S-mode when TW=1.
  * TW is hard-wired to 0 when S-mode is not supported.
  */
-fn delegate_interrupt_exception() {
-    unsafe { mstatus::set_mxr() };
-    unsafe { mstatus::set_sum() };
-    unsafe { mstatus::clear_tvm() };
-    unsafe { mstatus::clear_tsr() };
-    unsafe { mstatus::clear_tw() };
-    unsafe { mstatus::set_fs(mstatus::FS::Dirty) };
-    unsafe { fcsr::set_rounding_mode(fcsr::RoundingMode::RoundToNearestEven) };
-
-    use riscv::register::{medeleg, mideleg, mie};
-    unsafe {
-        mideleg::set_sext();
-        mideleg::set_stimer();
-        mideleg::set_ssoft();
-        // p 35, table 3.6
-        medeleg::set_instruction_misaligned();
-        medeleg::set_instruction_fault();
-        // This currently causes Linux to panic. We need to handle WFI in SBI.
-        // medeleg::set_illegal_instruction();
-        medeleg::set_breakpoint();
-        medeleg::set_load_misaligned(); // TODO: handle this?
-        medeleg::set_load_fault(); // PMP violation, shouldn't be hit
-        medeleg::set_store_misaligned();
-        medeleg::set_store_fault();
-        medeleg::set_user_env_call();
-        // Do not delegate env call from S-mode nor M-mode
-        medeleg::set_instruction_page_fault();
-        medeleg::set_load_page_fault();
-        medeleg::set_store_page_fault();
-        mie::set_msoft();
-    }
+unsafe fn delegate_interrupt_exception() {
+    mideleg::set_sext();
+    mideleg::set_stimer();
+    mideleg::set_ssoft();
+    // p 35, table 3.6
+    medeleg::set_instruction_misaligned();
+    medeleg::set_instruction_fault();
+    // This currently causes Linux to panic. We need to handle WFI in SBI.
+    // medeleg::set_illegal_instruction();
+    medeleg::set_breakpoint();
+    medeleg::set_load_misaligned(); // TODO: handle this?
+    medeleg::set_load_fault(); // PMP violation, shouldn't be hit
+    medeleg::set_store_misaligned();
+    medeleg::set_store_fault();
+    medeleg::set_user_env_call();
+    // Do not delegate env call from S-mode nor M-mode
+    medeleg::set_instruction_page_fault();
+    medeleg::set_load_page_fault();
+    medeleg::set_store_page_fault();
+    mie::set_msoft();
 }
 
 fn init_heap() {
